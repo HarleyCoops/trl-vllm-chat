@@ -297,7 +297,7 @@ def main(script_args: ScriptArguments):
         guided_decoding_regex: Optional[str] = None
 
     class GenerateResponse(BaseModel):
-        completion_ids: list[list[int]]
+        completion_ids: list[list[int]]        
 
     @app.post("/generate/", response_model=GenerateResponse)
     async def generate(request: GenerateRequest):
@@ -343,6 +343,75 @@ def main(script_args: ScriptArguments):
         all_outputs = llm.generate(request.prompts, sampling_params=sampling_params)
         completion_ids = [list(output.token_ids) for outputs in all_outputs for output in outputs.outputs]
         return {"completion_ids": completion_ids}
+
+    class ChatRequest(BaseModel):
+        messages: list[list[dict[str, str]]]
+        n: int = 1
+        repetition_penalty: float = 1.0
+        temperature: float = 1.0
+        top_p: float = 1.0
+        top_k: int = -1
+        min_p: float = 0.0
+        max_tokens: int = 16
+        guided_decoding_regex: Optional[str] = None
+        stop: Optional[list[str]] = None
+        include_stop_str_in_output: bool = False
+        skip_special_tokens: bool = True
+        spaces_between_special_tokens: bool = True
+
+    class ChatOutput(BaseModel):
+        token_ids: list[int]
+        text: str
+
+    class ChatResponseItem(BaseModel):
+        prompt_token_ids: list[int]
+        outputs: list[ChatOutput]
+
+    class ChatResponse(BaseModel):
+        responses: list[ChatResponseItem]
+
+    @app.post("/chat/", response_model=ChatResponse)
+    async def chat(request: ChatRequest):
+        """
+        Generates completions for the provided prompts.
+        """
+
+        # Guided decoding, if enabled
+        if request.guided_decoding_regex is not None:
+            guided_decoding = GuidedDecodingParams(backend="outlines", regex=request.guided_decoding_regex)
+        else:
+            guided_decoding = None
+
+        # Sampling parameters
+        sampling_params = SamplingParams(
+            n=request.n,
+            repetition_penalty=request.repetition_penalty,
+            temperature=request.temperature,
+            top_p=request.top_p,
+            top_k=request.top_k,
+            min_p=request.min_p,
+            max_tokens=request.max_tokens,
+            guided_decoding=guided_decoding,
+            stop=request.stop,
+            include_stop_str_in_output=request.include_stop_str_in_output,
+            skip_special_tokens=request.skip_special_tokens,
+            spaces_between_special_tokens=request.spaces_between_special_tokens,
+        )
+
+        all_outputs = llm.chat(request.messages, sampling_params=sampling_params)
+        responses = []
+        for outputs in all_outputs:
+            response = ChatResponseItem(
+                prompt_token_ids=list(outputs.prompt_token_ids),
+                outputs=[],
+            )
+            for output in outputs.outputs:
+                response.outputs.append(ChatOutput(
+                    token_ids=list(output.token_ids),
+                    text=output.text,
+                ))
+            responses.append(response)
+        return {"responses": responses}
 
     class InitCommunicatorRequest(BaseModel):
         host: str
