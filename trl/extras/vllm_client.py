@@ -188,6 +188,49 @@ class VLLMClient:
         else:
             raise Exception(f"Request failed: {response.status_code}, {response.text}")
 
+    def chat(
+        self,
+        messages: list[list[dict[str, str]]],
+        n: int = 1,
+        repetition_penalty: float = 1.0,
+        temperature: float = 1.0,
+        top_p: float = 1.0,
+        top_k: int = -1,
+        min_p: float = 0.0,
+        max_tokens: int = 16,
+        guided_decoding_regex: Optional[str] = None,
+        stop: Optional[list[str]] = None,
+        include_stop_str_in_output: bool = False,
+        skip_special_tokens: bool = True,
+        spaces_between_special_tokens: bool = True,
+    ) -> dict[str, list]:
+        """
+        Generates completions for the provided prompts.
+        """
+        url = f"http://{self.host}:{self.server_port}/chat/"
+        response = self.session.post(
+            url,
+            json={
+                "messages": messages,
+                "n": n,
+                "repetition_penalty": repetition_penalty,
+                "temperature": temperature,
+                "top_p": top_p,
+                "top_k": top_k,
+                "min_p": min_p,
+                "max_tokens": max_tokens,
+                "guided_decoding_regex": guided_decoding_regex,
+                "stop": stop,
+                "include_stop_str_in_output": include_stop_str_in_output,
+                "skip_special_tokens": skip_special_tokens,
+                "spaces_between_special_tokens": spaces_between_special_tokens,
+            },
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Request failed: {response.status_code}, {response.text}")
+
     def init_communicator(self):
         """
         Initializes the weight update group in a distributed setup for model synchronization.
