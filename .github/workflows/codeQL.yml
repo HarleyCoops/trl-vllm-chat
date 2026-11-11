@@ -14,13 +14,13 @@ jobs:
 
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: "Initialize CodeQL"
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v4
         with:
           languages: "yaml"
           queries: +security-and-quality, ./.github/codeql/custom-queries.qls
 
       - name: "Perform CodeQL Analysis"
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v4
